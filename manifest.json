@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "LStarry New Tab",
+  "version": "2.1.0",
+  "description": "A fast, immersive personal new tab page for Microsoft Edge.",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "host_permissions": [
+    "https://suggestqueries.google.com/*",
+    "https://api.bing.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://suggestqueries.google.com https://api.bing.com; img-src 'self' data: https: http:;"
+  }
+}

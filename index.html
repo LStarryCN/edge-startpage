@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#172235">
+    <title>New Tab</title>
+    <link rel="icon" href="assets/avatar/avatar.jpeg" type="image/jpeg">
+    <link rel="preload" href="assets/backgrounds/main-wallpaper.jpg" as="image">
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body data-wallpaper="main" data-dim="medium" data-motion="on">
+    <div class="wallpaper" aria-hidden="true"></div>
+    <div class="wallpaper-overlay" aria-hidden="true"></div>
+    <div class="pointer-light" aria-hidden="true"></div>
+
+    <div class="top-controls" role="toolbar" aria-label="Page controls">
+      <button class="icon-button" id="immersive-toggle" type="button" aria-label="Enter immersive mode" aria-pressed="false">
+        <img src="assets/icons/focus.svg" alt="" width="18" height="18">
+      </button>
+      <button class="icon-button" id="settings-open" type="button" aria-label="Open settings" aria-controls="settings-panel" aria-expanded="false">
+        <img src="assets/icons/settings.svg" alt="" width="18" height="18">
+      </button>
+    </div>
+
+    <main class="page-shell">
+      <section class="focus-stage" aria-label="New tab">
+        <div class="clock-group">
+          <time class="clock" id="clock" aria-live="off"><span id="clock-main">00:00</span><span class="clock-seconds" id="clock-seconds">00</span><span class="clock-period" id="clock-period"></span></time>
+          <p class="date" id="date">Saturday, Sep 12</p>
+          <p class="greeting" id="greeting">Good afternoon, LStarry.</p>
+        </div>
+
+        <div class="search-shell" id="search-shell">
+          <form class="search" id="search-form" role="search">
+            <label class="visually-hidden" for="search-input">Search the web or open a URL</label>
+            <img class="search-icon" src="assets/icons/search.svg" alt="" width="19" height="19">
+            <input id="search-input" name="query" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Search anything..." role="combobox" aria-autocomplete="list" aria-controls="suggestion-list" aria-expanded="false">
+            <kbd class="search-shortcut" aria-hidden="true">/</kbd>
+          </form>
+          <div class="suggestion-panel" id="suggestion-panel" aria-hidden="true">
+            <ul class="suggestion-list" id="suggestion-list" role="listbox" aria-label="Search suggestions"></ul>
+          </div>
+        </div>
+
+        <nav class="dock" id="dock" aria-label="Shortcuts">
+          <span class="dock-indicator" id="dock-indicator" aria-hidden="true"></span>
+        </nav>
+      </section>
+    </main>
+
+    <aside class="identity" id="identity">
+      <div class="profile-card" id="profile-card" aria-hidden="true">
+        <div class="profile-avatar-wrap" aria-hidden="true">
+          <span id="profile-fallback">L</span>
+          <img class="profile-avatar" id="profile-avatar" src="assets/avatar/avatar.jpeg" alt="" width="58" height="58">
+        </div>
+        <div class="profile-copy">
+          <strong id="profile-name">LStarry</strong>
+          <span>Software Engineering</span>
+          <p>Algorithm / Development / Life</p>
+        </div>
+        <div class="profile-links">
+          <a href="https://github.com/" aria-label="Open GitHub">GitHub</a>
+          <a href="https://lstarry.cn/" id="profile-blog-link" aria-label="Open LStarry's blog">Blog</a>
+        </div>
+      </div>
+      <button class="identity-summary" id="identity-toggle" type="button" aria-controls="profile-card" aria-expanded="false">
+        <span class="identity-name" id="identity-name">LStarry.</span>
+        <span class="identity-line">Software / Algorithm / Life</span>
+      </button>
+    </aside>
+
+    <div class="settings-scrim" id="settings-scrim" hidden></div>
+    <aside class="settings-panel" id="settings-panel" lang="zh-CN" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true" inert>
+      <header class="settings-header">
+        <div>
+          <p class="settings-kicker">PERSONALIZE</p>
+          <h2 id="settings-title">设置</h2>
+        </div>
+        <button class="icon-button panel-close" id="settings-close" type="button" aria-label="关闭设置">
+          <img src="assets/icons/x.svg" alt="" width="18" height="18">
+        </button>
+      </header>
+
+      <div class="settings-content">
+        <fieldset class="settings-section">
+          <legend>外观</legend>
+          <span class="field-label">壁纸</span>
+          <div class="wallpaper-options">
+            <label class="wallpaper-option wallpaper-main"><input type="radio" name="wallpaper" value="main"><span>Main Wallpaper</span></label>
+            <label class="wallpaper-option wallpaper-midnight"><input type="radio" name="wallpaper" value="midnight"><span>Midnight</span></label>
+            <label class="wallpaper-option wallpaper-graphite"><input type="radio" name="wallpaper" value="graphite"><span>Graphite</span></label>
+          </div>
+          <span class="field-label field-label-spaced">Wallpaper Dim</span>
+          <div class="segmented-control" aria-label="Wallpaper dim level">
+            <label><input type="radio" name="wallpaperDim" value="low"><span>Low</span></label>
+            <label><input type="radio" name="wallpaperDim" value="medium"><span>Medium</span></label>
+            <label><input type="radio" name="wallpaperDim" value="high"><span>High</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="settings-section">
+          <legend>搜索</legend>
+          <div class="segmented-control">
+            <label><input type="radio" name="searchEngine" value="google"><span>Google</span></label>
+            <label><input type="radio" name="searchEngine" value="bing"><span>Bing</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="settings-section">
+          <legend>时钟</legend>
+          <div class="segmented-control">
+            <label><input type="radio" name="timeFormat" value="24"><span>24 Hour</span></label>
+            <label><input type="radio" name="timeFormat" value="12"><span>12 Hour</span></label>
+          </div>
+        </fieldset>
+
+        <section class="settings-section" aria-labelledby="shortcuts-title">
+          <div class="settings-section-heading">
+            <h3 id="shortcuts-title">快捷网站</h3>
+            <button class="text-button" id="shortcut-add" type="button">
+              <img src="assets/icons/plus.svg" alt="" width="15" height="15">
+              添加
+            </button>
+          </div>
+          <div class="shortcut-editor" id="shortcut-editor"></div>
+          <p class="field-note" id="shortcut-limit-note">最多可添加 10 个，修改后自动保存。</p>
+        </section>
+
+        <fieldset class="settings-section motion-setting">
+          <legend>动效</legend>
+          <div class="segmented-control">
+            <label><input type="radio" name="motion" value="on"><span>On</span></label>
+            <label><input type="radio" name="motion" value="off"><span>Off</span></label>
+          </div>
+        </fieldset>
+
+        <section class="settings-section reset-section" aria-labelledby="reset-title">
+          <div>
+            <h3 id="reset-title">恢复默认</h3>
+            <p>重置外观、快捷网站与偏好。</p>
+          </div>
+          <button class="reset-button" id="settings-reset" type="button">
+            <img src="assets/icons/reset.svg" alt="" width="16" height="16">
+            重置
+          </button>
+        </section>
+      </div>
+    </aside>
+
+    <dialog class="reset-dialog" id="reset-dialog" lang="zh-CN" aria-labelledby="reset-dialog-title">
+      <form method="dialog">
+        <h2 id="reset-dialog-title">重置全部设置？</h2>
+        <p>壁纸、搜索、时钟和快捷网站将恢复默认。</p>
+        <div class="dialog-actions">
+          <button class="dialog-button" value="cancel">取消</button>
+          <button class="dialog-button dialog-button-danger" id="reset-confirm" value="confirm">重置</button>
+        </div>
+      </form>
+    </dialog>
+
+    <p class="mode-notice" id="mode-notice" role="status" aria-live="polite"></p>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
