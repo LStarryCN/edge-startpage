@@ -1,4 +1,6 @@
 import { configStore } from "./config.js";
+import { getWallpaperRecord } from "./wallpaper.js";
+import { showNotice } from "./ui.js";
 
 export function initBackground() {
   const wallpaper = document.querySelector(".wallpaper");
@@ -15,9 +17,46 @@ export function initBackground() {
   let currentLightY = window.innerHeight / 2 - lightSize / 2;
   let targetLightX = currentLightX;
   let targetLightY = currentLightY;
+  let wallpaperUrl = "";
+  let wallpaperRequest = 0;
+  let activeWallpaper = "";
 
   function motionAllowed() {
-    return config.motion && !reduceMotion.matches;
+    return config.motion && !reduceMotion.matches && !document.body.classList.contains("is-idle");
+  }
+
+  function applyAccent(accent) {
+    const hex = /^#[0-9A-F]{6}$/i.test(accent) ? accent : "#9BAFD0";
+    const channels = [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16));
+    document.documentElement.style.setProperty("--accent", hex);
+    document.documentElement.style.setProperty("--accent-rgb", channels.join(" "));
+  }
+
+  async function applyWallpaper(nextConfig) {
+    if (nextConfig.wallpaper === activeWallpaper) return;
+    activeWallpaper = nextConfig.wallpaper;
+    const request = ++wallpaperRequest;
+    if (!nextConfig.wallpaper.startsWith("custom:")) {
+      if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
+      wallpaperUrl = "";
+      wallpaper.style.removeProperty("background-image");
+      document.body.dataset.wallpaper = nextConfig.wallpaper;
+      return;
+    }
+
+    try {
+      const record = await getWallpaperRecord(nextConfig.wallpaper);
+      if (request !== wallpaperRequest) return;
+      if (!record?.blob) throw new Error("missing");
+      if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
+      wallpaperUrl = URL.createObjectURL(record.blob);
+      wallpaper.style.backgroundImage = `url("${wallpaperUrl}")`;
+      document.body.dataset.wallpaper = "custom";
+    } catch {
+      if (request !== wallpaperRequest) return;
+      showNotice("找不到这张自定义壁纸，已恢复默认壁纸。", "error");
+      configStore.update({ wallpaper: "main", accent: "#9BAFD0" });
+    }
   }
 
   function paint() {
@@ -55,9 +94,10 @@ export function initBackground() {
 
   function apply(nextConfig) {
     config = nextConfig;
-    document.body.dataset.wallpaper = config.wallpaper;
     document.body.dataset.dim = config.wallpaperDim;
     document.body.dataset.motion = motionAllowed() ? "on" : "off";
+    applyAccent(config.accent);
+    applyWallpaper(config);
 
     if (!motionAllowed()) {
       stopFrame();
@@ -68,6 +108,7 @@ export function initBackground() {
   }
 
   window.addEventListener("pointermove", (event) => {
+    if (!motionAllowed()) return;
     const normalizedX = event.clientX / window.innerWidth - 0.5;
     const normalizedY = event.clientY / window.innerHeight - 0.5;
     targetX = normalizedX * -10;
@@ -84,6 +125,12 @@ export function initBackground() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stopFrame();
     else startFrame();
+  });
+
+  document.addEventListener("lstarry:idle-change", () => {
+    document.body.dataset.motion = motionAllowed() ? "on" : "off";
+    if (motionAllowed()) startFrame();
+    else stopFrame();
   });
 
   reduceMotion.addEventListener("change", () => apply(config));

@@ -27,7 +27,7 @@
     <main class="page-shell">
       <section class="focus-stage" aria-label="New tab">
         <div class="clock-group">
-          <time class="clock" id="clock" aria-live="off"><span id="clock-main">00:00</span><span class="clock-seconds" id="clock-seconds">00</span><span class="clock-period" id="clock-period"></span></time>
+          <time class="clock" id="clock" aria-live="off"><span class="clock-time-row"><span id="clock-main">00:00</span><span class="clock-seconds" id="clock-seconds">00</span><span class="clock-period" id="clock-period"></span></span></time>
           <p class="date" id="date">Saturday, Sep 12</p>
           <p class="greeting" id="greeting">Good afternoon, LStarry.</p>
         </div>
@@ -47,6 +47,13 @@
         <nav class="dock" id="dock" aria-label="Shortcuts">
           <span class="dock-indicator" id="dock-indicator" aria-hidden="true"></span>
         </nav>
+        <div class="shortcut-context-menu" id="shortcut-context-menu" role="menu" aria-label="Shortcut actions" hidden>
+          <button type="button" role="menuitem" data-context-action="open">Open</button>
+          <button type="button" role="menuitem" data-context-action="new-tab">Open in New Tab</button>
+          <button type="button" role="menuitem" data-context-action="edit">Edit</button>
+          <button type="button" role="menuitem" data-context-action="first">Move to First</button>
+          <button type="button" role="menuitem" class="context-danger" data-context-action="delete">Delete</button>
+        </div>
       </section>
     </main>
 
@@ -76,7 +83,7 @@
     <aside class="settings-panel" id="settings-panel" lang="zh-CN" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true" inert>
       <header class="settings-header">
         <div>
-          <p class="settings-kicker">PERSONALIZE</p>
+          <p class="settings-kicker">个性化</p>
           <h2 id="settings-title">设置</h2>
         </div>
         <button class="icon-button panel-close" id="settings-close" type="button" aria-label="关闭设置">
@@ -87,18 +94,24 @@
       <div class="settings-content">
         <fieldset class="settings-section">
           <legend>外观</legend>
-          <span class="field-label">壁纸</span>
+          <span class="field-label">时钟</span>
+          <div class="segmented-control">
+            <label><input type="radio" name="timeFormat" value="24"><span>24 小时制</span></label>
+            <label><input type="radio" name="timeFormat" value="12"><span>12 小时制</span></label>
+          </div>
+          <span class="field-label field-label-spaced">内置壁纸</span>
           <div class="wallpaper-options">
-            <label class="wallpaper-option wallpaper-main"><input type="radio" name="wallpaper" value="main"><span>Main Wallpaper</span></label>
-            <label class="wallpaper-option wallpaper-midnight"><input type="radio" name="wallpaper" value="midnight"><span>Midnight</span></label>
-            <label class="wallpaper-option wallpaper-graphite"><input type="radio" name="wallpaper" value="graphite"><span>Graphite</span></label>
+            <label class="wallpaper-option wallpaper-main"><input type="radio" name="wallpaper" value="main"><span>主壁纸</span></label>
+            <label class="wallpaper-option wallpaper-midnight"><input type="radio" name="wallpaper" value="midnight"><span>午夜</span></label>
+            <label class="wallpaper-option wallpaper-graphite"><input type="radio" name="wallpaper" value="graphite"><span>石墨</span></label>
           </div>
-          <span class="field-label field-label-spaced">Wallpaper Dim</span>
-          <div class="segmented-control" aria-label="Wallpaper dim level">
-            <label><input type="radio" name="wallpaperDim" value="low"><span>Low</span></label>
-            <label><input type="radio" name="wallpaperDim" value="medium"><span>Medium</span></label>
-            <label><input type="radio" name="wallpaperDim" value="high"><span>High</span></label>
+          <span class="field-label field-label-spaced">壁纸暗度</span>
+          <div class="segmented-control" aria-label="壁纸暗度">
+            <label><input type="radio" name="wallpaperDim" value="low"><span>低</span></label>
+            <label><input type="radio" name="wallpaperDim" value="medium"><span>中</span></label>
+            <label><input type="radio" name="wallpaperDim" value="high"><span>高</span></label>
           </div>
+          <div class="accent-preview" aria-live="polite"><span>强调色</span><i id="accent-swatch" aria-hidden="true"></i><code id="accent-value">#9BAFD0</code></div>
         </fieldset>
 
         <fieldset class="settings-section">
@@ -107,17 +120,38 @@
             <label><input type="radio" name="searchEngine" value="google"><span>Google</span></label>
             <label><input type="radio" name="searchEngine" value="bing"><span>Bing</span></label>
           </div>
-        </fieldset>
-
-        <fieldset class="settings-section">
-          <legend>时钟</legend>
-          <div class="segmented-control">
-            <label><input type="radio" name="timeFormat" value="24"><span>24 Hour</span></label>
-            <label><input type="radio" name="timeFormat" value="12"><span>12 Hour</span></label>
+          <div class="settings-inline field-label-spaced">
+            <div><strong>搜索历史</strong><p>最多保留 20 条本地记录。</p></div>
+            <button class="text-button" id="history-clear" type="button">清除历史</button>
           </div>
         </fieldset>
 
-        <section class="settings-section" aria-labelledby="shortcuts-title">
+        <fieldset class="settings-section">
+          <legend>交互</legend>
+          <span class="field-label">快速启动</span>
+          <div class="segmented-control">
+            <label><input type="radio" name="quickLaunch" value="on"><span>开启</span></label>
+            <label><input type="radio" name="quickLaunch" value="off"><span>关闭</span></label>
+          </div>
+          <p class="field-note" id="quick-launch-hint"></p>
+          <span class="field-label field-label-spaced">空闲氛围模式</span>
+          <div class="segmented-control">
+            <label><input type="radio" name="idleAmbient" value="on"><span>开启</span></label>
+            <label><input type="radio" name="idleAmbient" value="off"><span>关闭</span></label>
+          </div>
+          <span class="field-label field-label-spaced">沉浸模式</span>
+          <div class="segmented-control">
+            <label><input type="radio" name="immersive" value="on"><span>开启</span></label>
+            <label><input type="radio" name="immersive" value="off"><span>关闭</span></label>
+          </div>
+          <span class="field-label field-label-spaced">动效</span>
+          <div class="segmented-control">
+            <label><input type="radio" name="motion" value="on"><span>开启</span></label>
+            <label><input type="radio" name="motion" value="off"><span>关闭</span></label>
+          </div>
+        </fieldset>
+
+        <section class="settings-section" id="shortcuts-settings" aria-labelledby="shortcuts-title">
           <div class="settings-section-heading">
             <h3 id="shortcuts-title">快捷网站</h3>
             <button class="text-button" id="shortcut-add" type="button">
@@ -129,34 +163,49 @@
           <p class="field-note" id="shortcut-limit-note">最多可添加 10 个，修改后自动保存。</p>
         </section>
 
-        <fieldset class="settings-section motion-setting">
-          <legend>动效</legend>
-          <div class="segmented-control">
-            <label><input type="radio" name="motion" value="on"><span>On</span></label>
-            <label><input type="radio" name="motion" value="off"><span>Off</span></label>
+        <section class="settings-section" id="wallpaper-settings" aria-labelledby="wallpaper-library-title">
+          <div class="settings-section-heading">
+            <h3 id="wallpaper-library-title">壁纸库</h3>
+            <button class="text-button" id="wallpaper-add" type="button">
+              <img src="assets/icons/plus.svg" alt="" width="15" height="15">
+              添加
+            </button>
           </div>
-        </fieldset>
+          <input class="visually-hidden" id="wallpaper-file" type="file" accept="image/jpeg,image/png,image/webp" tabindex="-1" aria-hidden="true">
+          <div class="wallpaper-library" id="wallpaper-library"></div>
+          <p class="field-note">自定义壁纸保存在 IndexedDB，单张最大 12 MB。</p>
+        </section>
 
-        <section class="settings-section reset-section" aria-labelledby="reset-title">
-          <div>
-            <h3 id="reset-title">恢复默认</h3>
-            <p>重置外观、快捷网站与偏好。</p>
+        <section class="settings-section" aria-labelledby="data-title">
+          <h3 id="data-title">数据与备份</h3>
+          <div class="settings-button-stack">
+            <button class="text-button" id="config-export" type="button">导出配置</button>
+            <button class="text-button" id="config-import" type="button">导入配置</button>
+            <button class="reset-button" id="settings-reset" type="button">
+              <img src="assets/icons/reset.svg" alt="" width="16" height="16">
+              恢复默认
+            </button>
           </div>
-          <button class="reset-button" id="settings-reset" type="button">
-            <img src="assets/icons/reset.svg" alt="" width="16" height="16">
-            重置
-          </button>
+          <input class="visually-hidden" id="config-file" type="file" accept="application/json,.json" tabindex="-1" aria-hidden="true">
+        </section>
+
+        <section class="settings-section settings-about" aria-labelledby="about-title">
+          <h3 id="about-title">关于</h3>
+          <p><strong>快捷键</strong><br>/ 搜索 · Alt + 1~9 快速启动 · Shift + Space 沉浸模式</p>
+          <p><strong>命令面板</strong><br>在搜索框输入 &gt; 设置、&gt; 壁纸或网站名称。</p>
+          <p><strong>浏览器主题建议</strong><br>建议 Edge 使用深色或深蓝灰主题，以获得最佳视觉融合。</p>
+          <p>LStarry 新标签页 v2.2.0</p>
         </section>
       </div>
     </aside>
 
-    <dialog class="reset-dialog" id="reset-dialog" lang="zh-CN" aria-labelledby="reset-dialog-title">
+    <dialog class="reset-dialog" id="confirm-dialog" lang="zh-CN" aria-labelledby="confirm-dialog-title">
       <form method="dialog">
-        <h2 id="reset-dialog-title">重置全部设置？</h2>
-        <p>壁纸、搜索、时钟和快捷网站将恢复默认。</p>
+        <h2 id="confirm-dialog-title">确认操作？</h2>
+        <p id="confirm-dialog-message"></p>
         <div class="dialog-actions">
           <button class="dialog-button" value="cancel">取消</button>
-          <button class="dialog-button dialog-button-danger" id="reset-confirm" value="confirm">重置</button>
+          <button class="dialog-button" id="confirm-dialog-confirm" value="confirm">确认</button>
         </div>
       </form>
     </dialog>

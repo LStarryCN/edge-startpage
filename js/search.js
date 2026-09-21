@@ -1,4 +1,5 @@
 import { configStore } from "./config.js";
+import { createShortcutIcon } from "./icons.js";
 
 const SEARCH_URLS = {
   google: "https://www.google.com/search?q=",
@@ -14,6 +15,19 @@ const RECENT_SEARCHES_KEY = "starry-recent-searches-v1";
 const MAX_RECENT_SEARCHES = 20;
 const MAX_SUGGESTIONS = 6;
 const DEBOUNCE_MS = 180;
+const SHORTCUT_ALIASES = {
+  github: ["gh"],
+  chatgpt: ["gpt", "openai"],
+  codeforces: ["cf"],
+  leetcode: ["lc"]
+};
+const SYSTEM_COMMANDS = [
+  { id: "settings", name: "打开设置", aliases: ["settings", "config", "设置", "配置"] },
+  { id: "immersive", name: "切换沉浸模式", aliases: ["immersive", "focus", "沉浸", "沉浸模式"] },
+  { id: "motion", name: "切换动效", aliases: ["motion", "animation", "动效", "动画"] },
+  { id: "wallpaper", name: "打开壁纸库", aliases: ["wallpaper", "background", "壁纸", "背景"] },
+  { id: "export", name: "导出配置", aliases: ["export", "backup", "导出", "备份"] }
+];
 
 export function resolveSearchTarget(value, engine = "google") {
   const query = String(value || "").trim();
@@ -33,12 +47,32 @@ export function normalizeRecentSearches(value) {
   const result = [];
   for (const item of value) {
     const text = String(item || "").trim();
-    if (!text || seen.has(text)) continue;
-    seen.add(text);
+    const key = text.toLocaleLowerCase();
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
     result.push(text.slice(0, 300));
     if (result.length === MAX_RECENT_SEARCHES) break;
   }
   return result;
+}
+
+export function getRecentSearches() {
+  try {
+    return normalizeRecentSearches(JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]"));
+  } catch {
+    return [];
+  }
+}
+
+export function setRecentSearches(value) {
+  const history = normalizeRecentSearches(value);
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(history));
+  } catch {
+    // Search remains available when storage is blocked.
+  }
+  document.dispatchEvent(new CustomEvent("lstarry:history-changed"));
+  return history;
 }
 
 export function matchRecentSearches(history, query) {
@@ -58,13 +92,39 @@ export function mergeSuggestions(localItems, remoteItems, limit = MAX_SUGGESTION
   for (const [items, source] of [[localItems, "recent"], [remoteItems, "remote"]]) {
     for (const item of items) {
       const text = String(item || "").trim();
-      if (!text || seen.has(text)) continue;
-      seen.add(text);
+      const key = text.toLocaleLowerCase();
+      if (!text || seen.has(key)) continue;
+      seen.add(key);
       result.push({ text, source });
       if (result.length === limit) return result;
     }
   }
   return result;
+}
+
+export function buildCommandSuggestions(query, shortcuts, limit = MAX_SUGGESTIONS) {
+  const needle = String(query || "").trim().toLocaleLowerCase();
+  const shortcutCommands = shortcuts.map((shortcut) => {
+    const key = shortcut.name.toLocaleLowerCase();
+    return {
+      text: shortcut.name,
+      source: "command",
+      kind: "shortcut",
+      shortcut,
+      terms: [key, ...(SHORTCUT_ALIASES[key] || [])]
+    };
+  });
+  const systemCommands = SYSTEM_COMMANDS.map((command) => ({
+    text: command.name,
+    source: "command",
+    kind: "system",
+    command: command.id,
+    terms: command.aliases
+  }));
+  return [...shortcutCommands, ...systemCommands]
+    .filter((item) => !needle || item.terms.some((term) => term.includes(needle)))
+    .slice(0, limit)
+    .map(({ terms, ...item }) => item);
 }
 
 export function buildSuggestionUrl(query, engine = "google") {
@@ -91,29 +151,26 @@ export function initSearch() {
   const input = document.querySelector("#search-input");
   const panel = document.querySelector("#suggestion-panel");
   const list = document.querySelector("#suggestion-list");
-  let history = loadHistory();
+  let history = getRecentSearches();
   let suggestions = [];
   let activeIndex = -1;
   let debounceId = 0;
   let controller = null;
   let requestSerial = 0;
 
-  function loadHistory() {
-    try {
-      return normalizeRecentSearches(JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]"));
-    } catch {
-      return [];
-    }
-  }
+  const isCommandMode = () => input.value.trimStart().startsWith(">");
+  const commandQuery = () => input.value.trimStart().slice(1).trim();
 
   function saveToHistory(query) {
     if (isDirectAddress(query)) return;
-    history = normalizeRecentSearches([query, ...history.filter((item) => item !== query)]);
-    try {
-      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(history));
-    } catch {
-      // Search remains available when storage is blocked.
-    }
+    const key = query.toLocaleLowerCase();
+    history = setRecentSearches([query, ...history.filter((item) => item.toLocaleLowerCase() !== key)]);
+  }
+
+  function deleteHistoryItem(text) {
+    const key = text.toLocaleLowerCase();
+    history = setRecentSearches(history.filter((item) => item.toLocaleLowerCase() !== key));
+    requestSuggestions();
   }
 
   function cancelPending() {
@@ -140,9 +197,22 @@ export function initSearch() {
     const visible = open && suggestions.length > 0 && document.activeElement === input;
     panel.classList.toggle("open", visible);
     shell.classList.toggle("suggestions-open", visible);
+    shell.classList.toggle("command-mode", visible && isCommandMode());
     panel.setAttribute("aria-hidden", String(!visible));
     input.setAttribute("aria-expanded", String(visible));
     if (!visible) setActive(-1);
+  }
+
+  function renderIcon(suggestion) {
+    if (suggestion.kind === "shortcut") return createShortcutIcon(suggestion.shortcut, "suggestion-command-icon");
+    const icon = document.createElement("img");
+    icon.src = suggestion.source === "recent" ? "assets/icons/history.svg"
+      : suggestion.source === "command" ? "assets/icons/terminal.svg"
+        : "assets/icons/search.svg";
+    icon.alt = "";
+    icon.width = 16;
+    icon.height = 16;
+    return icon;
   }
 
   function render(items, query) {
@@ -154,14 +224,9 @@ export function initSearch() {
       item.className = "suggestion-item";
       item.id = `suggestion-${index}`;
       item.dataset.index = String(index);
+      item.dataset.source = suggestion.source;
       item.role = "option";
       item.setAttribute("aria-selected", "false");
-
-      const icon = document.createElement("img");
-      icon.src = suggestion.source === "recent" ? "assets/icons/history.svg" : "assets/icons/search.svg";
-      icon.alt = "";
-      icon.width = 16;
-      icon.height = 16;
 
       const label = document.createElement("span");
       const [before, match, after] = splitSuggestion(suggestion.text, query);
@@ -172,7 +237,17 @@ export function initSearch() {
         label.append(strong);
       }
       label.append(document.createTextNode(after));
-      item.append(icon, label);
+      item.append(renderIcon(suggestion), label);
+
+      if (suggestion.source === "recent") {
+        const remove = document.createElement("button");
+        remove.className = "suggestion-remove";
+        remove.type = "button";
+        remove.dataset.removeHistory = "true";
+        remove.setAttribute("aria-label", `删除历史记录 ${suggestion.text}`);
+        remove.textContent = "×";
+        item.append(remove);
+      }
       list.append(item);
     });
     setOpen(items.length > 0);
@@ -189,7 +264,7 @@ export function initSearch() {
       if (!response.ok) return;
       const remoteItems = parseSuggestionResponse(await response.json());
       if (
-        serial !== requestSerial || document.hidden || document.activeElement !== input ||
+        serial !== requestSerial || document.hidden || document.activeElement !== input || isCommandMode() ||
         input.value.trim() !== query || configStore.get().searchEngine !== engine
       ) return;
       render(mergeSuggestions(localItems, remoteItems), query);
@@ -202,6 +277,12 @@ export function initSearch() {
 
   function requestSuggestions() {
     cancelPending();
+    if (isCommandMode()) {
+      const query = commandQuery();
+      render(buildCommandSuggestions(query, configStore.get().shortcuts), query);
+      return;
+    }
+
     const query = input.value.trim();
     if (!query || document.hidden || document.activeElement !== input) {
       render([], query);
@@ -224,6 +305,20 @@ export function initSearch() {
     if (blur) input.blur();
   }
 
+  function executeCommand(suggestion) {
+    closeSuggestions();
+    if (suggestion.kind === "shortcut") {
+      window.location.assign(suggestion.shortcut.url);
+      return;
+    }
+    if (suggestion.command === "settings") document.dispatchEvent(new CustomEvent("lstarry:open-settings"));
+    if (suggestion.command === "wallpaper") document.dispatchEvent(new CustomEvent("lstarry:open-settings", { detail: { section: "wallpaper-settings" } }));
+    if (suggestion.command === "export") document.dispatchEvent(new CustomEvent("lstarry:export-config"));
+    if (suggestion.command === "immersive") configStore.update({ immersive: !configStore.get().immersive });
+    if (suggestion.command === "motion") configStore.update({ motion: !configStore.get().motion });
+    input.value = "";
+  }
+
   function submitQuery(query) {
     const value = String(query || "").trim();
     if (!value) return;
@@ -234,17 +329,20 @@ export function initSearch() {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (isCommandMode()) {
+      const command = suggestions[activeIndex >= 0 ? activeIndex : 0];
+      if (command) executeCommand(command);
+      return;
+    }
     submitQuery(activeIndex >= 0 ? suggestions[activeIndex].text : input.value);
   });
 
   input.addEventListener("focus", requestSuggestions);
   input.addEventListener("input", requestSuggestions);
   input.addEventListener("search", requestSuggestions);
-  input.addEventListener("blur", () => {
-    window.setTimeout(() => {
-      if (!shell.contains(document.activeElement)) closeSuggestions();
-    }, 0);
-  });
+  input.addEventListener("blur", () => window.setTimeout(() => {
+    if (!shell.contains(document.activeElement)) closeSuggestions();
+  }, 0));
 
   input.addEventListener("keydown", (event) => {
     if (event.key === "ArrowDown" && suggestions.length) {
@@ -255,7 +353,11 @@ export function initSearch() {
       setActive(activeIndex > 0 ? activeIndex - 1 : suggestions.length - 1);
     } else if (event.key === "Enter" && activeIndex >= 0) {
       event.preventDefault();
-      submitQuery(suggestions[activeIndex].text);
+      if (isCommandMode()) executeCommand(suggestions[activeIndex]);
+      else submitQuery(suggestions[activeIndex].text);
+    } else if (event.shiftKey && event.key === "Delete" && suggestions[activeIndex]?.source === "recent") {
+      event.preventDefault();
+      deleteHistoryItem(suggestions[activeIndex].text);
     } else if (event.key === "Escape") {
       event.preventDefault();
       if (panel.classList.contains("open")) closeSuggestions();
@@ -272,7 +374,10 @@ export function initSearch() {
     const item = event.target.closest(".suggestion-item");
     if (!item) return;
     event.preventDefault();
-    submitQuery(suggestions[Number(item.dataset.index)].text);
+    const suggestion = suggestions[Number(item.dataset.index)];
+    if (event.target.closest("[data-remove-history]")) deleteHistoryItem(suggestion.text);
+    else if (isCommandMode()) executeCommand(suggestion);
+    else submitQuery(suggestion.text);
   });
 
   document.addEventListener("pointerdown", (event) => {
@@ -288,6 +393,10 @@ export function initSearch() {
     }
   });
 
+  document.addEventListener("lstarry:history-changed", () => {
+    history = getRecentSearches();
+    if (document.activeElement === input) requestSuggestions();
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) closeSuggestions();
     else if (document.activeElement === input) requestSuggestions();

@@ -4,6 +4,7 @@ import { configStore } from "./config.js";
 import { initDock } from "./dock.js";
 import { initSearch } from "./search.js";
 import { initSettings } from "./settings.js";
+import { showNotice } from "./ui.js";
 
 initBackground();
 initClock();
@@ -16,14 +17,12 @@ const identityToggle = document.querySelector("#identity-toggle");
 const profileCard = document.querySelector("#profile-card");
 const profileAvatar = document.querySelector("#profile-avatar");
 const immersiveToggle = document.querySelector("#immersive-toggle");
-const modeNotice = document.querySelector("#mode-notice");
 const profileName = document.querySelector("#profile-name");
 const profileFallback = document.querySelector("#profile-fallback");
 const profileBlogLink = document.querySelector("#profile-blog-link");
 const identityName = document.querySelector("#identity-name");
 let profileTimer;
 let idleTimer;
-let noticeTimer;
 let lastActivity = Date.now();
 
 function setProfile(open) {
@@ -40,18 +39,12 @@ function closeProfileSoon() {
   }, 180);
 }
 
-function showModeNotice(message) {
-  clearTimeout(noticeTimer);
-  modeNotice.textContent = message;
-  modeNotice.classList.add("visible");
-  noticeTimer = window.setTimeout(() => modeNotice.classList.remove("visible"), 1500);
-}
-
 function applyImmersive(config, announce = false) {
   document.body.classList.toggle("immersive", config.immersive);
   immersiveToggle.setAttribute("aria-pressed", String(config.immersive));
   immersiveToggle.setAttribute("aria-label", config.immersive ? "Exit immersive mode" : "Enter immersive mode");
-  if (announce) showModeNotice(config.immersive ? "Immersive mode · Shift + Space to exit" : "Immersive mode off");
+  if (config.immersive) setIdle(false);
+  if (announce) showNotice(config.immersive ? "Immersive mode · Shift + Space to exit" : "Immersive mode off");
 }
 
 function applyIdentity(config) {
@@ -64,21 +57,51 @@ function applyIdentity(config) {
 function toggleImmersive() {
   const next = !configStore.get().immersive;
   configStore.update({ immersive: next });
-  applyImmersive(configStore.get(), true);
+  showNotice(next ? "Immersive mode · Shift + Space to exit" : "Immersive mode off");
+}
+
+function idleBlocked() {
+  return document.hidden
+    || document.body.classList.contains("settings-open")
+    || document.body.classList.contains("context-menu-open")
+    || document.body.classList.contains("dialog-open")
+    || document.body.classList.contains("immersive")
+    || document.activeElement?.id === "search-input";
+}
+
+function setIdle(idle) {
+  const wasIdle = document.body.classList.contains("is-idle");
+  document.body.classList.toggle("is-idle", idle);
+  if (wasIdle !== idle) document.dispatchEvent(new CustomEvent("lstarry:idle-change", { detail: { idle } }));
+}
+
+function scheduleIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = 0;
+  const config = configStore.get();
+  if (!config.idleAmbient || document.hidden) {
+    setIdle(false);
+    return;
+  }
+  const remaining = config.idleTimeout - (Date.now() - lastActivity);
+  idleTimer = window.setTimeout(checkIdle, Math.max(0, remaining));
 }
 
 function checkIdle() {
   idleTimer = 0;
-  if (document.hidden) return;
-  const remaining = 25000 - (Date.now() - lastActivity);
-  if (remaining <= 0) document.body.classList.add("is-idle");
-  else idleTimer = window.setTimeout(checkIdle, remaining);
+  if (idleBlocked()) {
+    setIdle(false);
+    return;
+  }
+  const config = configStore.get();
+  if (config.idleAmbient && Date.now() - lastActivity >= config.idleTimeout) setIdle(true);
+  else scheduleIdle();
 }
 
 function noteActivity() {
   lastActivity = Date.now();
-  if (document.body.classList.contains("is-idle")) document.body.classList.remove("is-idle");
-  if (!idleTimer && !document.hidden) idleTimer = window.setTimeout(checkIdle, 25000);
+  setIdle(false);
+  scheduleIdle();
 }
 
 identityToggle.addEventListener("click", () => setProfile(true));
@@ -108,8 +131,8 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-for (const eventName of ["pointermove", "pointerdown", "keydown"]) {
-  document.addEventListener(eventName, noteActivity, { passive: eventName === "pointermove" });
+for (const eventName of ["mousemove", "mousedown", "keydown", "wheel", "touchstart"]) {
+  document.addEventListener(eventName, noteActivity, { passive: eventName !== "keydown" });
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -124,6 +147,7 @@ document.addEventListener("visibilitychange", () => {
 configStore.subscribe((config) => {
   applyImmersive(config);
   applyIdentity(config);
+  scheduleIdle();
 });
 applyImmersive(configStore.get());
 applyIdentity(configStore.get());
