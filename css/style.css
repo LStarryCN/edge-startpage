@@ -597,6 +597,14 @@ body[data-dim="high"] {
   display: grid;
 }
 
+.shortcut-icon:is([data-icon-mode="favicon"], [data-icon-mode="custom"]):not([data-loaded="true"]) .shortcut-icon-image {
+  opacity: 0;
+}
+
+.shortcut-icon:is([data-icon-mode="favicon"], [data-icon-mode="custom"]):not([data-loaded="true"]) .shortcut-monogram {
+  display: grid;
+}
+
 .shortcut-icon[data-tone="0"] .shortcut-monogram { background: rgb(78 99 122 / 0.72); }
 .shortcut-icon[data-tone="1"] .shortcut-monogram { background: rgb(93 83 117 / 0.72); }
 .shortcut-icon[data-tone="2"] .shortcut-monogram { background: rgb(75 108 103 / 0.72); }

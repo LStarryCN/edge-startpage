@@ -9,6 +9,7 @@ const BUILTIN_SITES = [
 ];
 
 const FAILED_REMOTE_ICONS = new Set();
+const FALLBACK_ONLY_HOSTS = ["sui-xiang.com", "sui-xiang.vip"];
 
 function hostnameFromUrl(value) {
   try {
@@ -54,7 +55,10 @@ export function normalizeShortcutIcon(shortcut) {
     return { icon: String(shortcut.icon).trim(), iconMode: "custom" };
   }
 
-  if (shortcut.iconMode === "fallback") return { icon: null, iconMode: "fallback" };
+  const host = hostnameFromUrl(shortcut.url);
+  if (shortcut.iconMode === "fallback" || FALLBACK_ONLY_HOSTS.some((candidate) => hostMatches(host, candidate))) {
+    return { icon: null, iconMode: "fallback" };
+  }
   return { icon: getFaviconUrl(shortcut.url), iconMode: "favicon" };
 }
 

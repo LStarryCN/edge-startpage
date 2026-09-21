@@ -35,6 +35,8 @@ assert.match(dockSource, /dragstart/);
 assert.match(dockSource, /data-context-action/);
 assert.match(dockSource, /dock-label/);
 assert.doesNotMatch(css, /\.dock-item\s+span\s*\{[^}]*display:\s*none/s);
+assert.match(html, /<\/main>\s*<div class="shortcut-context-menu"/, "The fixed context menu must not be inside the transformed focus stage");
+assert.match(css, /\[data-icon-mode="favicon"\][^}]*:not\(\[data-loaded="true"\]\)[^{]*\.shortcut-monogram\s*\{[^}]*display:\s*grid/s);
 assert.match(wallpaperSource, /indexedDB\.open/);
 assert.match(html, /meta name="theme-color" content="#172235"/);
 assert.doesNotMatch(`${html}\n${css}`, /transition:\s*all\b/i);
@@ -155,6 +157,14 @@ assert.equal(getFaviconUrl("https://example.com/path"), "https://example.com/fav
 assert.deepEqual(normalizeShortcutIcon({ name: "Example", url: "https://example.com/" }), {
   icon: "https://example.com/favicon.ico",
   iconMode: "favicon"
+});
+assert.deepEqual(normalizeShortcutIcon({ name: "随想", url: "https://sui-xiang.com/dashboard", iconMode: "favicon" }), {
+  icon: null,
+  iconMode: "fallback"
+});
+assert.deepEqual(normalizeShortcutIcon({ name: "随想", url: "https://www.sui-xiang.vip/home", iconMode: "favicon" }), {
+  icon: null,
+  iconMode: "fallback"
 });
 assert.equal(getMonogram({ name: "示例", url: "https://example.com/" }), "示");
 assert.equal(getIconTone({ name: "Example", url: "https://example.com/" }), getIconTone({ name: "Example", url: "https://example.com/" }));
